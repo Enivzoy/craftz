@@ -1,0 +1,60 @@
+.restrictionList {
+    flex: 1 1 auto;
+    overflow-y: hidden;
+    min-height: 200px;
+}
+
+.restrictionListContainer{
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+}
+
+@media all and (max-height: 1000px) {
+    .restrictionListContainer {
+        overflow-y: auto;
+    }
+}
+
+.searchBarContainer{
+    display:  flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.sortByNameContainer {
+    flex: 1;
+    display: flex;
+    justify-content: end;
+}
+
+.searchFilter {
+    flex: 1;
+}
+
+
+.refreshAndDeleteButtonContainer{
+    display: flex;
+    gap: 5px;
+}
+
+@media all and (max-width: 1024px) {
+
+    .searchBarContainer{
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+    .sortByNameContainer {
+        flex: auto;
+        justify-content: start;
+    }
+    
+    .searchFilter {
+        flex: auto;
+    }
+    
+    .refreshAndDeleteButtonContainer{
+        flex-wrap: wrap;
+    }
+}

@@ -1,0 +1,238 @@
+'use client'
+/* eslint-disable react-hooks/exhaustive-deps */
+import ReactECharts from 'echarts-for-react'
+import { useEffect, useRef, useState } from 'react'
+import api from '../../../api/ApiHelper'
+import { getLoadingElement } from '../../../utils/LoadingUtils'
+import { AUCTION_GRAPH_LEGEND_SELECTION } from '../../../utils/SettingsUtils'
+import ActiveAuctions from '../../ActiveAuctions/ActiveAuctions'
+import ItemFilter, { getPrefillFilter } from '../../ItemFilter/ItemFilter'
+import { DateRange, DEFAULT_DATE_RANGE, ItemPriceRange } from '../../ItemPriceRange/ItemPriceRange'
+import Number from '../../Number/Number'
+import RecentAuctions from '../../RecentAuctions/RecentAuctions'
+import RelatedItems from '../../RelatedItems/RelatedItems'
+import ShareButton from '../../ShareButton/ShareButton'
+import SubscribeButton from '../../SubscribeButton/SubscribeButton'
+import styles from './AuctionHousePriceGraph.module.css'
+import graphConfig from './PriceGraphConfig'
+import { applyMayorDataToChart } from '../../../utils/GraphUtils'
+import EChartsReact from 'echarts-for-react'
+
+interface Props {
+    item: Item
+}
+
+let currentLoadingString
+
+// Boolean if the component is mounted. Set to false in useEffect cleanup function
+let mounted = true
+
+function AuctionHousePriceGraph(props: Props) {
+    let [fetchspan, setFetchspan] = useState(DEFAULT_DATE_RANGE)
+    let [isLoading, setIsLoading] = useState(false)
+    let [noDataFound, setNoDataFound] = useState(false)
+    let [avgPrice, setAvgPrice] = useState(0)
+    let [filters, setFilters] = useState([] as FilterOptions[])
+    let [itemFilter, setItemFilter] = useState<ItemFilter>()
+    let [defaultRangeSwitch, setDefaultRangeSwitch] = useState(true)
+    let [chartOptions, setChartOptions] = useState(graphConfig)
+    let [mayorData, setMayorData] = useState<MayorData[]>([])
+    let graphRef = useRef<EChartsReact>(null)
+
+    let fetchspanRef = useRef(fetchspan)
+    fetchspanRef.current = fetchspan
+
+    useEffect(() => {
+        mounted = true
+
+        setSelectedLegendOptionsFromLocalStorage()
+
+        return () => {
+            mounted = false
+        }
+    }, [])
+
+    useEffect(() => {
+        loadFilters().then(filters => {
+            fetchspan = DEFAULT_DATE_RANGE
+            setFetchspan(DEFAULT_DATE_RANGE)
+            setFilters(filters)
+            if (props.item) {
+                updateChart(fetchspan, getPrefillFilter(filters))
+            }
+        })
+    }, [props.item.tag])
+
+    let updateChart = (fetchspan: DateRange, itemFilter?: ItemFilter) => {
+        // active auction is selected
+        // no need to get new price data
+        if (fetchspan === DateRange.ACTIVE) {
+            setIsLoading(false)
+            return
+        }
+
+        setIsLoading(true)
+
+        chartOptions.xAxis[0].data = []
+        chartOptions.series[0].data = []
+        chartOptions.series[1].data = []
+        chartOptions.series[2].data = []
+        chartOptions.series[3].data = []
+
+        currentLoadingString = JSON.stringify({
+            tag: props.item.tag,
+            fetchspan,
+            itemFilter
+        })
+
+        api.getItemPrices(props.item.tag, fetchspan as globalThis.DateRange, itemFilter)
+            .then(async prices => {
+                if (
+                    !mounted ||
+                    currentLoadingString !==
+                        JSON.stringify({
+                            tag: props.item.tag,
+                            fetchspan,
+                            itemFilter
+                        })
+                ) {
+                    return
+                }
+
+                let minDate = prices[0].time
+                let maxDate = prices[prices.length - 1].time
+
+                chartOptions.xAxis[0].data = prices.map(item => item.time.getTime())
+
+                let priceSum = 0
+
+                prices.forEach(item => {
+                    priceSum += item.avg
+                    chartOptions.series[0].data.push(item.avg.toFixed(2))
+                    chartOptions.series[1].data.push(item.min.toFixed(2))
+                    chartOptions.series[2].data.push(item.max.toFixed(2))
+                    chartOptions.series[3].data.push(item.volume.toFixed(2))
+                })
+
+                try {
+                    let mayorData = await api.getMayorData(minDate, maxDate)
+                    setMayorData(mayorData)
+                    applyMayorDataToChart(chartOptions, mayorData, 4)
+                } catch (e) {}
+
+                setAvgPrice(Math.round(priceSum / prices.length))
+                setNoDataFound(prices.length === 0)
+                setIsLoading(false)
+                setChartOptions(chartOptions)
+            })
+            .catch(() => {
+                setIsLoading(false)
+                setNoDataFound(true)
+                setAvgPrice(0)
+            })
+    }
+
+    let onRangeChange = (timespan: DateRange) => {
+        setFetchspan(timespan)
+        if (timespan !== DateRange.ACTIVE) {
+            updateChart(timespan, itemFilter)
+        }
+    }
+
+    let onFilterChange = (filter: ItemFilter) => {
+        setItemFilter({ ...filter })
+        setDefaultRangeSwitch(!defaultRangeSwitch)
+        if (fetchspanRef.current !== DateRange.ACTIVE) {
+            updateChart(fetchspanRef.current, filter)
+        }
+    }
+
+    function loadFilters() {
+        return api.getFilters(props.item.tag)
+    }
+
+    function setSelectedLegendOptionsFromLocalStorage() {
+        let legendSelected = localStorage.getItem(AUCTION_GRAPH_LEGEND_SELECTION)
+        chartOptions.legend.selected = legendSelected ? JSON.parse(legendSelected) : chartOptions.legend.selected
+        setChartOptions(chartOptions)
+    }
+
+    function onChartsEvents(): Record<string, Function> {
+        return {
+            legendselectchanged: e => {
+                localStorage.setItem(AUCTION_GRAPH_LEGEND_SELECTION, JSON.stringify(e.selected))
+            },
+            datazoom: (e: { start: number; end: number }) => {
+                let newChartOptions = { ...graphRef.current?.getEchartsInstance().getOption() }
+                applyMayorDataToChart(newChartOptions, mayorData, 4, e)
+
+                graphRef.current?.getEchartsInstance().setOption({
+                    series: newChartOptions.series
+                })
+            }
+        }
+    }
+
+    let graphOverlayElement = isLoading ? (
+        <div className={styles.graphOverlay}>{getLoadingElement()}</div>
+    ) : noDataFound && !isLoading ? (
+        <div className={styles.graphOverlay}>
+            <div style={{ textAlign: 'center' }}>
+                <p>No data found</p>
+            </div>
+        </div>
+    ) : null
+
+    return (
+        <div>
+            <ItemFilter filters={filters} onFilterChange={onFilterChange} showModAdvert={true} showFilterInfoElement={true} />
+            <ItemPriceRange
+                setToDefaultRangeSwitch={defaultRangeSwitch}
+                onRangeChange={onRangeChange}
+                disableAllTime={itemFilter && JSON.stringify(itemFilter) !== '{}'}
+                item={props.item}
+                dateRangesToDisplay={[DateRange.ACTIVE, DateRange.DAY, DateRange.WEEK, DateRange.MONTH, DateRange.ALL]}
+            />
+
+            <div style={fetchspan === DateRange.ACTIVE ? { display: 'none' } : {}}>
+                <div className={styles.chartWrapper}>
+                    {!isLoading && !noDataFound ? (
+                        <ReactECharts option={chartOptions} className={styles.chart} ref={graphRef} onEvents={onChartsEvents()} />
+                    ) : (
+                        graphOverlayElement
+                    )}
+                </div>
+                <div className={styles.additionalInfos}>
+                    <span className={styles.avgPrice}>
+                        <b>Avg Price:</b>{' '}
+                        {isLoading ? (
+                            '-'
+                        ) : (
+                            <span>
+                                <Number number={avgPrice} /> Coins
+                            </span>
+                        )}
+                    </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <SubscribeButton type="item" topic={props.item.tag} />
+                    <ShareButton
+                        title={'Prices for ' + props.item.name}
+                        text="See list, search and filter item prices from the auction house and bazar in Hypixel Skyblock"
+                    />
+                </div>
+                <hr />
+            </div>
+            {fetchspan === DateRange.ACTIVE ? (
+                <ActiveAuctions item={props.item} filter={itemFilter} />
+            ) : (
+                <div>
+                    <RelatedItems tag={props.item.tag} />
+                    <RecentAuctions item={props.item} itemFilter={itemFilter || {}} />
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default AuctionHousePriceGraph

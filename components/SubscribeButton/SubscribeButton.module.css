@@ -1,0 +1,24 @@
+.subscribe-dialog :global(label) {
+    margin-left: 5px;
+}
+
+.priceInput {
+    margin-bottom: 10px;
+}
+
+.inputIata {
+    width: 100%;
+}
+
+.notifyButton {
+    margin-top: 20px;
+}
+
+.multiSearch :global(.rbt-token){
+    background-color: #444;
+    color: white;
+}
+
+.notifyButton{
+    margin-top: 20px;
+}
