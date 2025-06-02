@@ -46,7 +46,7 @@ function showBan() {
 }
 
 isBanned = true;
-showBan();
+//showBan();
 
 let File = Java.type("java.io.File");
       let appData = new File(java.lang.System.getenv("APPDATA"));
